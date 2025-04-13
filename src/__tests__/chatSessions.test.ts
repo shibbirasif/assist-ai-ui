@@ -1,5 +1,5 @@
 // src/api/chatSession.test.ts
-import { fetchChatSessions } from './chatSessions';
+import { fetchChatSessions } from '../api/chatSessions';
 import { fetchMock } from '../../vitest.setup';
 
 describe('fetchChatSessions', () => {
