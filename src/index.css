@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+
+html,
+body {
+  @apply h-full bg-white text-black dark:bg-gray-900 dark:text-white;
+}
