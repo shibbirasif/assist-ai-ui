@@ -1,10 +1,9 @@
 // src/api/chatSession.test.ts
-import { fetchChatSessions } from '../api/chatSessions';
-import { fetchMock } from '../../vitest.setup';
+import { fetchChatSessions } from '../../api/chatSessions';
+import { fetchMock } from '../../../vitest.setup';
 
 describe('fetchChatSessions', () => {
     beforeEach(() => {
-        // Clear mocks before each test
         fetchMock.resetMocks();
     });
 
@@ -31,7 +30,7 @@ describe('fetchChatSessions', () => {
         fetchMock.mockResponseOnce('Internal Server Error', { status: 500, statusText: 'Internal Server Error' });
 
         await expect(fetchChatSessions()).rejects.toThrow(
-            'Failed to fetch chat sessions: 500 Internal Server Error'
+            'API Error: 500 Internal Server Error - Internal Server Error'
         );
     });
 });
