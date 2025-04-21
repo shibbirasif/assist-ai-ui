@@ -37,10 +37,13 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
         if (socketMessages.length > 0) {
             setMessages((prev) => [...prev, ...socketMessages]);
         }
+        console.log('socketMessages:', socketMessages);
+
     }, [socketMessages]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        console.log('messages:', messages);
     }, [messages]);
 
     const handleSend = async () => {
@@ -67,7 +70,7 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
             <div className="flex-1 space-y-2 overflow-y-auto">
                 {messages.length > 0 ? (
                     messages.map((msg, index) => (
-                        <p
+                        <p  id={String(index)}
                             key={index}
                             className={`${msg.role === 'user' ? 'text-left' : 'text-right'
                                 }`}
