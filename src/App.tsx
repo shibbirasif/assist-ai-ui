@@ -12,7 +12,7 @@ export const App = () => {
         <Sidebar />
         <div className="flex flex-col flex-1">
           <Topbar toggleDarkMode={() => setDarkMode(!darkMode)} />
-          <ChatWindow />
+          <ChatWindow chatSessionId={null} />
         </div>
       </div>
     </div>
