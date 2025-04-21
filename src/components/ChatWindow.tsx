@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { createChatSession, fetchChatSession } from '../api/chatSessions';
 import { Message } from '../dto/Message';
+import ReactMarkdown from 'react-markdown';
 
 type ChatWindowProps = {
     chatSessionId: string | null;
@@ -110,14 +111,14 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
             <div className="flex-1 space-y-2 overflow-y-auto">
                 {messages.length > 0 ? (
                     messages.map((msg, index) => (
-                        <p
+                        <div
                             id={String(index)}
                             key={index}
                             className={`${msg.role === 'user' ? 'text-left' : 'text-right'}`}
                         >
                             <strong>{msg.role === 'user' ? 'User' : 'AI'}:</strong>{' '}
-                            {msg.content}
-                        </p>
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        </div>
                     ))
                 ) : (
                     <p className="text-gray-500">No messages yet...</p>

@@ -14,7 +14,6 @@ export const Sidebar = () => {
                 const data = await fetchChatSessions();
                 setChatSessions(data);
                 setError(null);
-                console.log('Fetched chat sessions:', data);
             } catch (err) {
                 console.error('Failed to fetch chat sessions:', err);
                 setError('Failed to load chats. Please try again later.');
