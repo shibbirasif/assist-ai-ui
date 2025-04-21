@@ -4,28 +4,17 @@ import { ChatSessionDetails } from "../dto/ChatSessionDetails";
 import { apiClient } from "../lib/apiClient";
 
 export const fetchChatSessions = async (): Promise<ChatSession[]> => {
-    return await apiClient<ChatSession[]>(API_PATHS.listChatSessions);
+    const res = await apiClient(API_PATHS.listChatSessions);
+    return res.chatSessions;
 };
 
 export async function fetchChatSession(id: string): Promise<ChatSessionDetails> {
     return await apiClient<ChatSessionDetails>(API_PATHS.getChatSession(id));
 }
 
-export async function createChatSession(title: string, model: string): Promise<ChatSessionDetails> {
-    try {
-        const res = await fetch(API_PATHS.createChatSession, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, model }),
-        });
-
-        if (!res.ok) {
-            throw new Error(`Failed to create chat session: ${res.statusText}`);
-        }
-
-        return await res.json();
-    } catch (err) {
-        console.error('[createChatSession] Error:', err);
-        throw err;
-    }
-}
+export const createChatSession = async (title: string, model: string): Promise<ChatSessionDetails> => {
+    return await apiClient<ChatSessionDetails>(API_PATHS.createChatSession, {
+        method: 'POST',
+        body: { title, model },
+    });
+};

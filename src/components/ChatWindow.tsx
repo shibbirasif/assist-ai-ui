@@ -1,24 +1,28 @@
-import { useEffect, useState } from 'react';
-import { useChatSocket } from '../hooks/useChatSocket'; // assuming useChatSocket is exported from this path
-import { createChatSession, fetchChatSession } from '../api/chatSessions'; // assuming the API functions are exported from this path
+import { useEffect, useRef, useState } from 'react';
+import { useChatSocket } from '../hooks/useChatSocket';
+import { createChatSession, fetchChatSession } from '../api/chatSessions';
 import { Message } from '../dto/Message';
 
 type ChatWindowProps = {
-  chatSessionId: string | null;
-}
+    chatSessionId: string | null;
+};
 
 export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
     const [sessionId, setSessionId] = useState<string | null>(chatSessionId);
-    const [title, setTitle] = useState<string>('');
+    const [title, setTitle] = useState<string>('New Chat');
     const [messages, setMessages] = useState<Message[]>([]);
+    const [input, setInput] = useState('');
+    const [isFirstMessage, setIsFirstMessage] = useState(true);
+
     const { messages: socketMessages, isConnected, sendMessage } = useChatSocket(sessionId);
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (sessionId) {
-            // Fetch existing chat session if sessionId is provided
+        // Only fetch existing session if chatSessionId is passed
+        if (chatSessionId) {
             const fetchSession = async () => {
                 try {
-                    const session = await fetchChatSession(sessionId);
+                    const session = await fetchChatSession(chatSessionId);
                     setTitle(session.title);
                     setMessages(session.messages);
                 } catch (error) {
@@ -26,58 +30,72 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
                 }
             };
             fetchSession();
-        } else {
-            // Create new chat session if sessionId is not available
-            const createSession = async () => {
-                try {
-                    const newSession = await createChatSession( 'New Chat',  'ollama' );
-                    setSessionId(newSession.id);
-                    setTitle(newSession.title);
-                    setMessages(newSession.messages);
-                } catch (error) {
-                    console.error('Error creating chat session:', error);
-                }
-            };
-            createSession();
         }
-    }, [sessionId]);
+    }, [chatSessionId]);
 
     useEffect(() => {
-        // Listen to WebSocket messages and update the messages state
-        if (socketMessages && socketMessages.length > 0) {
-            setMessages((prevMessages) => [...prevMessages, ...socketMessages]);
+        if (socketMessages.length > 0) {
+            setMessages((prev) => [...prev, ...socketMessages]);
         }
     }, [socketMessages]);
 
-    const handleSendMessage = (message: string) => {
-        if (message && isConnected) {
-            sendMessage(message);
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+
+        try {
+            if (!sessionId) {
+                const newSession = await createChatSession('New Chat @' + new Date().toISOString(), 'llama3.2:3b');
+                setSessionId(newSession.id);
+                setTitle(newSession.title);
+            }
+
+            setMessages((prev) => [...prev, { role: 'user', content: input.trim() }]);
+            sendMessage(input.trim());
+            setInput('');
+            setIsFirstMessage(false);
+        } catch (err) {
+            console.error('Failed to send message:', err);
         }
     };
 
     return (
         <div className="flex-1 flex flex-col justify-between p-4 overflow-y-auto">
-            <div className="flex-1">
-                {/* Chat messages go here */}
+            <div className="flex-1 space-y-2 overflow-y-auto">
                 {messages.length > 0 ? (
                     messages.map((msg, index) => (
-                        <p key={index} className={msg.role === 'user' ? 'text-left' : 'text-right'}>
-                            <strong>{msg.role === 'user' ? 'User' : 'AI'}: </strong>{msg.content}
+                        <p
+                            key={index}
+                            className={`${msg.role === 'user' ? 'text-left' : 'text-right'
+                                }`}
+                        >
+                            <strong>{msg.role === 'user' ? 'User' : 'AI'}:</strong> {msg.content}
                         </p>
                     ))
                 ) : (
-                    <p>No messages yet...</p>
+                    <p className="text-gray-500">No messages yet...</p>
                 )}
+                <div ref={messagesEndRef} />
             </div>
             <div className="mt-4">
+                <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                    Connection status:{" "}
+                    <span className={isConnected ? 'text-green-500' : 'text-red-500'}>
+                        {isConnected ? 'Connected' : 'Disconnected'}
+                    </span>
+                </div>
                 <input
                     type="text"
+                    value={input}
                     placeholder="Type a message..."
                     className="w-full p-2 rounded border dark:bg-gray-700 dark:border-gray-600"
+                    onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                            handleSendMessage(e.currentTarget.value.trim());
-                            e.currentTarget.value = ''; // Clear input after sending
+                        if (e.key === 'Enter') {
+                            handleSend();
                         }
                     }}
                 />

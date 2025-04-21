@@ -14,6 +14,7 @@ export const Sidebar = () => {
                 const data = await fetchChatSessions();
                 setChatSessions(data);
                 setError(null);
+                console.log('Fetched chat sessions:', data);
             } catch (err) {
                 console.error('Failed to fetch chat sessions:', err);
                 setError('Failed to load chats. Please try again later.');
@@ -25,13 +26,20 @@ export const Sidebar = () => {
         loadChatSessions();
     }, []);
 
+    useEffect(() => {
+        console.log('isLoading changed:', isLoading);
+        if (!isLoading) {
+            console.log('Chat sessions:', chatSessions);
+        }
+    }, [isLoading]);
+
     const handleChatSelect = (chatId: string) => {
         console.log(`Selected chat: ${chatId}`);
         // You can add navigation or state updates here
     };
 
     return (
-        <div className="w-64 bg-gray-200 dark:bg-gray-800 p-4 hidden md:block">
+        <div className="w-64 bg-gray-200 dark:bg-gray-800 p-4 hidden md:block h-screen">
             <h2 className="font-semibold mb-4">Chats</h2>
 
             {isLoading && <p className="text-gray-500">Loading chats...</p>}
@@ -40,7 +48,7 @@ export const Sidebar = () => {
 
             {!isLoading && !error && (
                 chatSessions.length > 0 ? (
-                    <ul>
+                    <ul className="max-h-[calc(100vh-5rem)] overflow-y-auto pr-1">
                         {chatSessions.map((chat) => (
                             <li
                                 key={chat.id}
