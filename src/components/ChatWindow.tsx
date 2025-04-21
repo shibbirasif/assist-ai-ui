@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatSocket } from '../hooks/useChatSocket';
 import { createChatSession, fetchChatSession } from '../api/chatSessions';
 import { Message } from '../dto/Message';
@@ -9,16 +9,41 @@ type ChatWindowProps = {
 
 export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
     const [sessionId, setSessionId] = useState<string | null>(chatSessionId);
-    const [title, setTitle] = useState<string>('New Chat');
+    const [_title, setTitle] = useState('New Chat');
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
-    const [isFirstMessage, setIsFirstMessage] = useState(true);
+    const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
-    const { messages: socketMessages, isConnected, sendMessage } = useChatSocket(sessionId);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+    const handleStreamChunk = useCallback((chunk: Message) => {
+        setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === 'assistant' && last.stream !== '[DONE]') {
+                return [
+                    ...prev.slice(0, -1),
+                    {
+                        ...last,
+                        content: last.content + chunk.content,
+                        stream: chunk.stream,
+                    },
+                ];
+            }
+            return [...prev, chunk];
+        });
+    }, []);
+
+    const handleStreamDone = useCallback(() => {
+        setMessages((prev) =>
+            prev.map((msg, index) =>
+                index === prev.length - 1 ? { ...msg, stream: '[DONE]' } : msg
+            )
+        );
+    }, []);
+
+    const { isConnected, sendMessage } = useChatSocket(sessionId, handleStreamChunk, handleStreamDone);
+
     useEffect(() => {
-        // Only fetch existing session if chatSessionId is passed
         if (chatSessionId) {
             const fetchSession = async () => {
                 try {
@@ -34,32 +59,47 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
     }, [chatSessionId]);
 
     useEffect(() => {
-        if (socketMessages.length > 0) {
-            setMessages((prev) => [...prev, ...socketMessages]);
-        }
-        console.log('socketMessages:', socketMessages);
-
-    }, [socketMessages]);
-
-    useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        console.log('messages:', messages);
     }, [messages]);
+
+    // Send pending message after connection is ready
+    useEffect(() => {
+        if (sessionId && isConnected && pendingMessage) {
+            sendMessage(pendingMessage);
+            setPendingMessage(null);
+        }
+    }, [sessionId, isConnected, pendingMessage, sendMessage]);
 
     const handleSend = async () => {
         if (!input.trim()) return;
 
         try {
-            if (!sessionId) {
-                const newSession = await createChatSession('New Chat @' + new Date().toISOString(), 'llama3.2:3b');
+            let currentSessionId = sessionId;
+
+            if (!currentSessionId) {
+                const newSession = await createChatSession(
+                    'New Chat @' + new Date().toISOString(),
+                    'llama3.2:3b'
+                );
+                currentSessionId = newSession.id;
                 setSessionId(newSession.id);
                 setTitle(newSession.title);
             }
 
-            setMessages((prev) => [...prev, { role: 'user', content: input.trim() }]);
-            sendMessage(input.trim());
+            // Add user message immediately
+            setMessages((prev) => [
+                ...prev,
+                { role: 'user', content: input.trim() },
+            ]);
+
+            // Send or queue the message
+            if (isConnected && currentSessionId === sessionId) {
+                sendMessage(input.trim());
+            } else {
+                setPendingMessage(input.trim());
+            }
+
             setInput('');
-            setIsFirstMessage(false);
         } catch (err) {
             console.error('Failed to send message:', err);
         }
@@ -70,12 +110,13 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
             <div className="flex-1 space-y-2 overflow-y-auto">
                 {messages.length > 0 ? (
                     messages.map((msg, index) => (
-                        <p  id={String(index)}
+                        <p
+                            id={String(index)}
                             key={index}
-                            className={`${msg.role === 'user' ? 'text-left' : 'text-right'
-                                }`}
+                            className={`${msg.role === 'user' ? 'text-left' : 'text-right'}`}
                         >
-                            <strong>{msg.role === 'user' ? 'User' : 'AI'}:</strong> {msg.content}
+                            <strong>{msg.role === 'user' ? 'User' : 'AI'}:</strong>{' '}
+                            {msg.content}
                         </p>
                     ))
                 ) : (
@@ -85,7 +126,7 @@ export const ChatWindow = ({ chatSessionId }: ChatWindowProps) => {
             </div>
             <div className="mt-4">
                 <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                    Connection status:{" "}
+                    Connection status:{' '}
                     <span className={isConnected ? 'text-green-500' : 'text-red-500'}>
                         {isConnected ? 'Connected' : 'Disconnected'}
                     </span>

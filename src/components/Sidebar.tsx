@@ -26,12 +26,6 @@ export const Sidebar = () => {
         loadChatSessions();
     }, []);
 
-    useEffect(() => {
-        console.log('isLoading changed:', isLoading);
-        if (!isLoading) {
-            console.log('Chat sessions:', chatSessions);
-        }
-    }, [isLoading]);
 
     const handleChatSelect = (chatId: string) => {
         console.log(`Selected chat: ${chatId}`);
